@@ -53,7 +53,7 @@ def main():
     
     # 3. Gestion des Codes Étudiants et Consolidation
     print("\n\n--- ÉTAPE 3/4 : CRÉATION DU CODE ÉTUDIANT ET CONSOLIDATION (student_code_manager) ---")
-    # CORRECTION APPLIQUÉE : Appel de la fonction 'gerer_code_etudiant_et_consolider' qui doit accepter deux arguments
+    # Cette fonction continue d'utiliser l'algorithme de hachage pour créer des clés internes
     df_intermediaire = gerer_code_etudiant_et_consolider(df_nettoye.copy(), config.HASH_ALGORITHM) 
     
     # Le nombre de lignes n'a pas changé à cette étape, seules les colonnes code_etudiant et les champs ont été consolidés.
@@ -61,7 +61,8 @@ def main():
     
     # 4. Gestion des Codes d'Inscription et Suppression des Doublons
     print("\n\n--- ÉTAPE 4/4 : CRÉATION DU CODE INSCRIPTION ET SUPPRESSION DES DOUBLONS (inscription_code_manager) ---")
-    df_final = gerer_code_inscription_et_supprimer_doublons(df_intermediaire.copy(), config.HASH_ALGORITHM) 
+    # CORRECTION APPLIQUÉE : Suppression de l'argument 'config.HASH_ALGORITHM'
+    df_final = gerer_code_inscription_et_supprimer_doublons(df_intermediaire.copy()) 
 
     # 5. Finalisation et Exportation
     

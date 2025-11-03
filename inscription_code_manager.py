@@ -1,89 +1,75 @@
-# inscription_code_manager.py
+# inscription_code_manager.py (Mis à jour avec id_Parcours)
 
 import pandas as pd
-import hashlib
 import numpy as np
 
-# --- (Fonction generer_hash dupliquée pour l'autonomie du fichier) ---
-
-def generer_hash(chaine_a_hasher: str, algorithme: str, longueur: int = 32) -> str:
-    """Génère un hachage unique pour une chaîne de caractères et le tronque (par défaut 32 caractères)."""
-    if pd.isna(chaine_a_hasher) or chaine_a_hasher == '':
-        return pd.NA
-    
-    chaine_normalisee = str(chaine_a_hasher).strip().upper()
-    
-    try:
-        if algorithme == 'SHA-256':
-            hashed_value = hashlib.sha256(chaine_normalisee.encode('utf-8')).hexdigest()
-        elif algorithme == 'MD5':
-            hashed_value = hashlib.md5(chaine_normalisee.encode('utf-8')).hexdigest()
-        else:
-            hashed_value = hashlib.sha256(chaine_normalisee.encode('utf-8')).hexdigest()
-            
-        return hashed_value[:longueur]
-        
-    except Exception:
-        return pd.NA
-
-# --- FONCTION PRINCIPALE DE GESTION DES CODES D'INSCRIPTION ---
-
-def gerer_code_inscription_et_supprimer_doublons(df: pd.DataFrame, hash_algorithm: str) -> pd.DataFrame:
+def gerer_code_inscription_et_supprimer_doublons(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Crée un identifiant unique (code_inscription) basé sur l'identité et les variables d'inscription
-    et supprime les doublons basés sur cet identifiant composite.
+    Crée un identifiant unique (code_inscription) basé sur la nomenclature simplifiée :
+    <CODE_ETUDIANT>_<SEQUENCE_UNIQUE_INSCRIPTION>
+    et supprime les doublons basés sur la contrainte d'unicité.
+    
+    La clé d'unicité est: code_etudiant + annee_universitaire + niveau + id_Parcours.
     """
     print("\n==================================================================")
     print("🚀 DÉMARRAGE : GESTION DES CODES D'INSCRIPTION ET SUPPRESSION DES DOUBLONS")
     print(f"Total des lignes d'inscription initial : {len(df)}")
     print("==================================================================")
     
-    # 1. Préparation de la Clé d'Inscription
+    # --- 1. Vérification des Colonnes et Création de la Clé d'Unicité ---
     
-    # S'assurer que les colonnes nécessaires sont présentes
+    # CHANGEMENT ICI : Utilisation de 'id_Parcours' (P majuscule)
     colonnes_requises = ['code_etudiant', 'annee_universitaire', 'niveau', 'id_Parcours']
     for col in colonnes_requises:
         if col not in df.columns:
             print(f"❌ Erreur : Colonne '{col}' manquante. Le processus s'arrête.")
-            return df # Retourne le DataFrame non modifié
+            return df
 
-    # Création de la Clé d'Inscription basée sur la contrainte demandée
-    df['cle_inscription_unique'] = (
+    # Clé de CONTRAINTE (utilisée pour détecter les doublons)
+    df['cle_contrainte'] = (
         df['code_etudiant'].astype(str).fillna('NA_ID') + 
         df['annee_universitaire'].astype(str).fillna('NA_ANNEE') + 
         df['niveau'].astype(str).fillna('NA_NIV') + 
-        df['id_Parcours'].astype(str).fillna('NA_PARC')
+        df['id_Parcours'].astype(str).fillna('NA_PARC') # CHANGEMENT ICI
     )
 
-    print("\n--- ÉTAPE 1 : CRÉATION DU CODE D'INSCRIPTION ---")
-    print(f"🔑 Clé utilisée : code_etudiant + annee_universitaire + niveau + id_Parcours.")
-    
-    # 2. Hachage et Attribution du code_inscription
-    
-    # Hachage de la clé pour obtenir le code_inscription
-    df['code_inscription'] = df['cle_inscription_unique'].apply(
-        lambda x: generer_hash(x, hash_algorithm, 32)
-    )
-
-    print(f"✅ {df['code_inscription'].nunique()} codes d'inscription uniques générés initialement.")
-    
-    # 3. Suppression des Doublons
-    
-    print("\n--- ÉTAPE 2 : SUPPRESSION DES DOUBLONS D'INSCRIPTION ---")
+    print("\n--- ÉTAPE 1 : SUPPRESSION DES DOUBLONS SUR LA CONTRAINTE ---")
     
     lignes_avant = len(df)
     
-    # Conserver la première occurrence du code d'inscription en doublon
-    # C'est l'étape qui supprime les lignes.
-    df_final = df.drop_duplicates(subset=['code_inscription'], keep='first')
+    # Suppression des doublons basés sur la contrainte d'unicité
+    df_final = df.drop_duplicates(subset=['cle_contrainte'], keep='first').copy()
     
     lignes_supprimees = lignes_avant - len(df_final)
 
-    print(f"🔥 Lignes en doublon supprimées : **{lignes_supprimees}**.")
+    print(f"🔥 Lignes en doublon de contrainte supprimées : **{lignes_supprimees}**.")
     
-    # 4. Nettoyage final
+    # --- 2. Génération de la Nomenclature code_inscription Simplifiée ---
     
-    colonnes_a_supprimer = ['cle_inscription_unique']
+    print("\n--- ÉTAPE 2 : GÉNÉRATION DU CODE D'INSCRIPTION SIMPLIFIÉ ---")
+    
+    # 2.1 Déterminer l'ordre des inscriptions pour chaque étudiant
+    df_final['annee_debut'] = df_final['annee_universitaire'].astype(str).str.split('-').str[0].astype(int, errors='ignore').fillna(9999)
+    
+    # Trier d'abord par code_etudiant, puis par l'année de l'inscription (pour l'ordre séquentiel)
+    df_final.sort_values(by=['code_etudiant', 'annee_debut'], ascending=[True, True], inplace=True)
+    
+    # 2.2 Générer la séquence (001, 002, 003, ...) pour chaque groupe (code_etudiant)
+    df_final['sequence_compteur'] = df_final.groupby('code_etudiant').cumcount() + 1
+    
+    # Formatage de la séquence sur 3 chiffres (XXX)
+    sequence_formattee = df_final['sequence_compteur'].astype(str).str.zfill(3)
+    
+    # 2.3 Assemblage du code final : <CODE_ETUDIANT>_<SEQUENCE_3_CHIFFRES>
+    df_final['code_inscription'] = (
+        df_final['code_etudiant'].astype(str) + '_' + sequence_formattee
+    )
+    
+    print(f"✅ {df_final['code_inscription'].nunique()} codes d'inscription uniques générés avec la nomenclature.")
+
+    # --- 3. Nettoyage final ---
+    
+    colonnes_a_supprimer = ['cle_contrainte', 'annee_debut', 'sequence_compteur']
     df_final = df_final.drop(columns=colonnes_a_supprimer, errors='ignore')
     
     print("\n==================================================================")
