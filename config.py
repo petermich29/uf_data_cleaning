@@ -1,5 +1,3 @@
-# config.py
-
 import os
 
 # --- 1. CHEMINS ET DOSSIERS ---
@@ -16,29 +14,42 @@ DOSSIER_SORTIE = os.path.join(DOSSIER_PATH, 'sortie_nettoyage')
 # Constantes pour le filtrage des noms de fichiers
 NOM_FILTRE_2023 = "_UF2023_"
 NOM_FILTRE_2024 = "_UF2024_"
+NOM_FILTRE_2025 = "_UF2025_" 
 
 # Noms des fichiers de sortie
 FICHIER_SORTIE_NETTOYEE = '_UFALLTIME__KEYED.xlsx'
 FICHIER_DOUBLONS_ETUDIANTS = 'liste_doublons_etudiants.xlsx'
 FICHIER_DOUBLONS_INSCRIPTIONS = 'liste_doublons_inscriptions.xlsx'
 
-# --- 3. PARAMÈTRES D'ALGORITHMES ---
-# Mode de hachage des identifiants (pour utilisation future) : 
-# - 'SHA-256' pour la robustesse et l'anonymisation (par défaut)
-# - 'MD5' pour un identifiant plus court (32 caractères)
-HASH_ALGORITHM = 'SHA-256' 
-
-# --- 4. COLONNES ATTENDUES ET STRUCTURE ---
+# --- 3. COLONNES ATTENDUES ET STRUCTURE ---
 
 # Colonnes attendues (utilisées pour l'ordre et le filtrage à l'exportation)
 COLONNES_ATTENDUES = [
-    'code_etudiant', 'code_inscription',   # Identifiant unique de l'étudiant (Hash tronqué à 32)
-    'numero_inscription', 'composante', 'domaine', 'mention', 'parcours', 'id_Parcours',
-    'formation', 'formation_master', 'niveau', 'annee_universitaire', 'nom', 'prenoms',
-    # Informations personnelles
-    'sexe', 'naissance_date', 'naissance_annee', 'naissance_mois', 'naissance_jour', 'naissance_lieu', 
-    'cin', 'cin_date', 'cin_lieu', 'nationalite', 
-    'bacc_annee', 'bacc_serie_technique', 'bacc_serie',
-    'bacc_numero', 'bacc_centre', 'bacc_mention', 'semestre', 'telephone', 'mail'
+    # 1. IDENTIFIANTS UNIQUES ET BASE
+    'code_etudiant',                        # Identifiant unique de l'étudiant (Hash tronqué)
+    'code_inscription',                     # Identifiant unique de l'inscription (Hash)
+    'numero_inscription',                   # Numéro d'inscription officiel
+    'annee_universitaire',                  # Année de l'inscription
+    
+    # 2. INFORMATIONS INSTITUTIONNELLES (NOUVELLE POSITION)
+    'institution_id', 'institution_nom', 'institution_type', # <- Mis à jour
+    
+    # 3. INFORMATIONS D'INSCRIPTION ET DE FORMATION
+    'composante', 'domaine', 'mention', 'parcours', 'id_Parcours',
+    'formation', 'formation_master', 'niveau', 'semestre',
+    
+    # 4. INFORMATIONS PERSONNELLES ET CIVILES
+    'nom', 'prenoms', 'sexe', 
+    'naissance_date', 'naissance_annee', 'naissance_mois', 'naissance_jour', 'naissance_lieu', 
+    'cin', 'cin_date', 'cin_lieu', 'nationalite',
+    
+    # 5. INFORMATIONS BACCALAURÉAT
+    'bacc_annee', 'bacc_numero', 'bacc_serie', 'bacc_serie_technique', 
+    'bacc_centre', 'bacc_mention',
+    
+    # 6. CONTACTS
+    'telephone', 'mail'
+    
+    # COLONNES OPTIONNELLES/COMMENTÉES
     #'redoublement', 'boursier','taux_bourse', 'adresse', 'pere_nom', 'pere_profession', 'mere_nom', 'mere_profession'
 ]

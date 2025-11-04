@@ -36,7 +36,9 @@ def main():
     df_brut = charger_et_combiner_fichiers(
         dossier_path=config.DOSSIER_PATH,
         filtre_2023=config.NOM_FILTRE_2023,
-        filtre_2024=config.NOM_FILTRE_2024
+        filtre_2024=config.NOM_FILTRE_2024,
+        # NOUVEAU : Ajout du filtre 2025 pour la nouvelle année universitaire
+        filtre_2025=config.NOM_FILTRE_2025 
     )
 
     if df_brut.empty:
@@ -53,15 +55,15 @@ def main():
     
     # 3. Gestion des Codes Étudiants et Consolidation
     print("\n\n--- ÉTAPE 3/4 : CRÉATION DU CODE ÉTUDIANT ET CONSOLIDATION (student_code_manager) ---")
-    # Cette fonction continue d'utiliser l'algorithme de hachage pour créer des clés internes
-    df_intermediaire = gerer_code_etudiant_et_consolider(df_nettoye.copy(), config.HASH_ALGORITHM) 
+    # Mise à jour : L'algorithme de hachage est désormais géré par défaut dans student_code_manager.py 
+    # car 'config.HASH_ALGORITHM' a été retiré de config.py.
+    df_intermediaire = gerer_code_etudiant_et_consolider(df_nettoye.copy()) 
     
     # Le nombre de lignes n'a pas changé à cette étape, seules les colonnes code_etudiant et les champs ont été consolidés.
     print(f"\n✅ Total des lignes après gestion des codes étudiants : {len(df_intermediaire)}") 
     
     # 4. Gestion des Codes d'Inscription et Suppression des Doublons
     print("\n\n--- ÉTAPE 4/4 : CRÉATION DU CODE INSCRIPTION ET SUPPRESSION DES DOUBLONS (inscription_code_manager) ---")
-    # CORRECTION APPLIQUÉE : Suppression de l'argument 'config.HASH_ALGORITHM'
     df_final = gerer_code_inscription_et_supprimer_doublons(df_intermediaire.copy()) 
 
     # 5. Finalisation et Exportation

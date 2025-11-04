@@ -7,18 +7,22 @@ import numpy as np
 
 # --- Fonctions de chargement et combinaison ---
 
-def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_2024: str) -> pd.DataFrame:
+def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_2024: str, filtre_2025: str) -> pd.DataFrame:
     """
-    Recherche les fichiers Excel contenant les chaînes de filtre spécifiées,
+    Recherche les fichiers Excel contenant les chaînes de filtre spécifiées (2023, 2024, 2025),
     les charge, leur assigne l'année universitaire correspondante, et les combine.
     """
     # Recherche récursive de fichiers
     file_pattern_2023 = os.path.join(dossier_path, f"**\*{filtre_2023}*.xlsx")
     file_pattern_2024 = os.path.join(dossier_path, f"**\*{filtre_2024}*.xlsx")
+    file_pattern_2025 = os.path.join(dossier_path, f"**\*{filtre_2025}*.xlsx") # Ajout du filtre 2025
 
     fichiers_excel_2023 = glob.glob(file_pattern_2023, recursive=True)
     fichiers_excel_2024 = glob.glob(file_pattern_2024, recursive=True)
-    fichiers_excel = list(set(fichiers_excel_2023 + fichiers_excel_2024))
+    fichiers_excel_2025 = glob.glob(file_pattern_2025, recursive=True) # Recherche des fichiers 2025
+    
+    # Combinaison des listes de fichiers (en utilisant set pour éviter les doublons)
+    fichiers_excel = list(set(fichiers_excel_2023 + fichiers_excel_2024 + fichiers_excel_2025))
 
     if not fichiers_excel:
         print(f"❌ Aucun fichier Excel trouvé dans {dossier_path} avec les motifs spécifiés.")
@@ -30,8 +34,10 @@ def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_202
     for fichier in tqdm(fichiers_excel, desc="Chargement et combinaison des données"):
         annee_universitaire = None
         
-        # Attribution de l'année universitaire basée sur le nom du fichier
-        if re.search(filtre_2024, fichier, re.IGNORECASE):
+        # Attribution de l'année universitaire basée sur le nom du fichier (du plus récent au plus ancien)
+        if re.search(filtre_2025, fichier, re.IGNORECASE):
+            annee_universitaire = '2024-2025'
+        elif re.search(filtre_2024, fichier, re.IGNORECASE):
             annee_universitaire = '2023-2024'
         elif re.search(filtre_2023, fichier, re.IGNORECASE):
             annee_universitaire = '2022-2023'
@@ -201,6 +207,31 @@ def traiter_formation_hybride(df: pd.DataFrame) -> pd.DataFrame:
         
     return df
 
+def ajouter_colonnes_institutionnelles(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ajoute les colonnes institutionnelles constantes (ID, Nom, Type)
+    pour toutes les lignes du DataFrame, correspondant à l'Université de Fianarantsoa.
+    """
+    print("\n--- 🏢 Ajout des Colonnes Institutionnelles (Université de Fianarantsoa) ---")
+
+    # Définition des valeurs constantes
+    INSTITUTION_ID = 'UNIV_FIANARA'
+    INSTITUTION_NOM = 'Université de Fianarantsoa'
+    INSTITUTION_TYPE = 'PUBLIQUE'
+
+    # Création et remplissage des colonnes pour toutes les lignes
+    df['institution_id'] = INSTITUTION_ID
+    df['institution_nom'] = INSTITUTION_NOM
+    df['institution_type'] = INSTITUTION_TYPE
+    
+    # Conversion des types pour utiliser le StringDtype (nullable string)
+    df['institution_id'] = df['institution_id'].convert_dtypes()
+    df['institution_nom'] = df['institution_nom'].convert_dtypes()
+    df['institution_type'] = df['institution_type'].convert_dtypes()
+
+    print(f"✅ Colonnes institutionnelles créées : ID={INSTITUTION_ID}, Nom={INSTITUTION_NOM}, Type={INSTITUTION_TYPE}.")
+    return df
+
 def imputer_id_parcours(df: pd.DataFrame) -> pd.DataFrame:
     """Impute les valeurs manquantes de 'id_Parcours' par concaténation: composante_mention_parcours."""
     print("\n--- 🧩 Imputation de 'id_Parcours' ---")
@@ -347,9 +378,9 @@ def nettoyer_et_formater_num_inscription(df: pd.DataFrame) -> pd.DataFrame:
         # --- A. Préparation du Préfixe Mention ---
         prefixe_col = 'mention'
         if prefixe_col not in df.columns:
-             print(f"⚠️ Colonne '{prefixe_col}' manquante. Le préfixage par mention est ignoré.")
-             # Créer une série vide pour éviter l'erreur de référence
-             mention_prefixe = pd.Series([''] * len(df), index=df.index)
+            print(f"⚠️ Colonne '{prefixe_col}' manquante. Le préfixage par mention est ignoré.")
+            # Créer une série vide pour éviter l'erreur de référence
+            mention_prefixe = pd.Series([''] * len(df), index=df.index)
         else:
             # Nettoyage et préparation du préfixe
             mention_prefixe = df[prefixe_col].astype(str).str.upper().str.strip()
@@ -406,6 +437,11 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     # Exécution séquentielle des étapes de nettoyage
+    
+    # Étape 0 : Ajout des colonnes institutionnelles (avant tout nettoyage/imputation)
+    df = ajouter_colonnes_institutionnelles(df)
+    
+    # Étape 1 : Nettoyage général des textes
     df = nettoyer_colonnes_texte(df)
     
     # Nettoyage et uniformisation des années
