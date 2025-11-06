@@ -426,6 +426,85 @@ def nettoyer_et_formater_num_inscription(df: pd.DataFrame) -> pd.DataFrame:
         
     return df
 
+# --- Nouvelle Fonction pour le Semestre ---
+
+def traiter_colonne_semestre(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Crée les 16 colonnes binaires S01 à S16 basées sur la colonne 'semestre'.
+    Impute les valeurs manquantes en fonction de la colonne 'niveau'.
+    """
+    print("\n--- 📚 Création des Colonnes Binaires de Semestre (S01-S16) ---")
+
+    if 'semestre' not in df.columns or 'niveau' not in df.columns:
+        print("⚠️ Colonnes 'semestre' ou 'niveau' manquantes. Traitement ignoré.")
+        return df
+
+    # 1. Initialisation des 16 colonnes binaires à 0 (type entier nullable)
+    semestre_cols = [f'S{i:02d}' for i in range(1, 17)]
+    for col in semestre_cols:
+        df[col] = pd.Series(0, dtype='Int64')
+
+    # 2. Traitement des valeurs existantes dans 'semestre'
+    
+    # 2.1 Nettoyage et standardisation du contenu (S1, S2, S3 et S5, s1-s2, etc.)
+    semestre_propre = df['semestre'].astype(str).str.upper().str.strip().replace('NAN', '')
+    
+    # Remplacer les séparateurs non-alphanumériques par un seul séparateur (par exemple, un espace)
+    # Ceci transforme 'S1 et S2', 'S3, S5', 'S1-S2' en 'S1 S2', 'S3 S5', 'S1 S2' (après le nettoyage de 'S')
+    semestre_propre = semestre_propre.str.replace(r'[^A-Z0-9]', ' ', regex=True)
+    
+    # Remplacer S suivi de 1 ou 2 chiffres
+    # On isole chaque semestre (ex: 'S1 S2' devient ['S1', 'S2'])
+    def extraire_semestres(valeur):
+        if pd.isna(valeur) or not valeur:
+            return set()
+        
+        # Trouver toutes les occurrences de S suivi d'un ou deux chiffres
+        matches = re.findall(r'S(\d{1,2})', valeur, re.IGNORECASE)
+        
+        # Convertir en numéros et garantir qu'ils sont entre 1 et 16
+        semestres = {int(s) for s in matches if 1 <= int(s) <= 16}
+        return semestres
+
+    df['semestres_identifies'] = semestre_propre.apply(extraire_semestres)
+
+    # 2.2 Remplissage des colonnes binaires
+    for i in range(1, 17):
+        col_name = f'S{i:02d}'
+        # Si 'i' est dans l'ensemble de semestres identifiés, mettre 1
+        df.loc[df['semestres_identifies'].apply(lambda s: i in s), col_name] = 1
+
+    # 3. Imputation par 'niveau' pour les lignes où AUCUN semestre n'a été identifié (colonne 'semestre' était vide ou illisible)
+    condition_pas_de_semestre = df['semestres_identifies'].apply(len) == 0
+
+    # Mapping Niveau -> Semestres à remplir (basé sur votre règle : L1 -> S01, S02, etc.)
+    mapping_niveau_semestre = {
+        'L1': [1, 2], 'L2': [3, 4], 'L3': [5, 6], 
+        'M1': [7, 8], 'M2': [9, 10], 
+        'D1': [11, 12], 'D2': [13, 14], 'D3': [15, 16]
+    }
+    
+    # Nettoyage et standardisation de la colonne 'niveau'
+    niveau_propre = df['niveau'].astype(str).str.upper().str.strip().replace('NAN', '')
+    
+    lignes_imputees = 0
+    for niveau, semestres in mapping_niveau_semestre.items():
+        # Condition : Pas de semestre trouvé ET Niveau correspond
+        condition_imputation = condition_pas_de_semestre & (niveau_propre == niveau)
+        
+        if condition_imputation.any():
+            lignes_imputees += condition_imputation.sum()
+            for i in semestres:
+                col_name = f'S{i:02d}'
+                df.loc[condition_imputation, col_name] = 1
+
+    print(f"✅ Colonnes binaires S01 à S16 créées et remplies. {lignes_imputees} lignes imputées par le niveau.")
+    
+    # Suppression de la colonne temporaire
+    df = df.drop(columns=['semestres_identifies'], errors='ignore')
+    
+    return df
+
 # --------------------------------------------------------------------------
 # --- Fonction Orchestratrice Principale ---
 
@@ -455,5 +534,8 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     df = nettoyer_et_formater_cin(df)
     df = nettoyer_et_formater_telephone(df)
     df = nettoyer_et_formater_num_inscription(df)
+    
+    # NOUVELLE ÉTAPE : Nettoyage et imputation du semestre
+    df = traiter_colonne_semestre(df)
 
     return df

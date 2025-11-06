@@ -38,6 +38,10 @@ COLONNES_ATTENDUES = [
     'composante', 'domaine', 'mention', 'parcours', 'id_Parcours',
     'formation', 'formation_master', 'niveau', 'semestre',
     
+    # --- Nouvelles colonnes binaires de semestre (S01 à S16) ---
+    'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 
+    'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16',
+    
     # 4. INFORMATIONS PERSONNELLES ET CIVILES
     'nom', 'prenoms', 'sexe', 
     'naissance_date', 'naissance_annee', 'naissance_mois', 'naissance_jour', 'naissance_lieu', 
