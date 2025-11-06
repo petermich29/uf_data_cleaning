@@ -11,6 +11,7 @@ def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_202
     """
     Recherche les fichiers Excel contenant les chaînes de filtre spécifiées (2023, 2024, 2025),
     les charge, leur assigne l'année universitaire correspondante, et les combine.
+    Affiche le nom des fichiers chargés.
     """
     # Recherche récursive de fichiers
     file_pattern_2023 = os.path.join(dossier_path, f"**\*{filtre_2023}*.xlsx")
@@ -30,9 +31,12 @@ def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_202
 
     print(f"--- 📂 {len(fichiers_excel)} Fichiers à traiter (incluant les sous-dossiers) ---")
     liste_dfs = []
-    
+    fichiers_charges_par_annee = {} # Pour le récapitulatif
+
+    # Utilisation de tqdm pour la barre de progression
     for fichier in tqdm(fichiers_excel, desc="Chargement et combinaison des données"):
         annee_universitaire = None
+        nom_fichier = os.path.basename(fichier)
         
         # Attribution de l'année universitaire basée sur le nom du fichier (du plus récent au plus ancien)
         if re.search(filtre_2025, fichier, re.IGNORECASE):
@@ -48,13 +52,31 @@ def charger_et_combiner_fichiers(dossier_path: str, filtre_2023: str, filtre_202
                 df = pd.read_excel(fichier, sheet_name=0)
                 df['annee_universitaire'] = annee_universitaire
                 liste_dfs.append(df)
+                
+                # Enregistrement pour le récapitulatif
+                if annee_universitaire not in fichiers_charges_par_annee:
+                    fichiers_charges_par_annee[annee_universitaire] = []
+                fichiers_charges_par_annee[annee_universitaire].append(nom_fichier)
+                
+                # AFFICHAGE DU NOM DU FICHIER CHARGÉ (Utilisation de tqdm.write pour ne pas perturber la barre de progression)
+                tqdm.write(f"  > Fichier chargé : {nom_fichier} ({annee_universitaire}, {len(df)} lignes)")
+
             except Exception as e:
-                tqdm.write(f"⚠️ Erreur lors du chargement de {os.path.basename(fichier)}: {e}")
+                tqdm.write(f"⚠️ Erreur lors du chargement de {nom_fichier}: {e}")
         else:
-            tqdm.write(f"⚠️ Fichier ignoré : {os.path.basename(fichier)} ne correspond à aucun filtre d'année universitaire.")
+            tqdm.write(f"⚠️ Fichier ignoré : {nom_fichier} ne correspond à aucun filtre d'année universitaire.")
 
 
     df_final = pd.concat(liste_dfs, ignore_index=True)
+    
+    # Affichage du récapitulatif final
+    print("\n--- ✅ Récapitulatif de chargement par Année Universitaire ---")
+    if fichiers_charges_par_annee:
+        for annee, fichiers in sorted(fichiers_charges_par_annee.items()):
+            print(f"  * {annee} ({len(fichiers)} fichiers chargés)")
+    else:
+        print("  * Aucun fichier chargé.")
+        
     print(f"\n✅ Total des lignes chargées après combinaison : {len(df_final)}")
     return df_final
 
