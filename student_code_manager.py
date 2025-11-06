@@ -233,7 +233,7 @@ def gerer_code_etudiant_et_consolider(df: pd.DataFrame, hash_algorithm: str = 'S
         'nom', 'prenoms', 'cin', 'cin_date', 'cin_lieu', 'nationalite', 'naissance_lieu', 
         'mail', 'telephone', 'adresse', 'sexe', 'bacc_annee', 'bacc_serie', 
         'bacc_numero', 'bacc_centre', 'bacc_mention',
-        'naissance_date', 
+        'naissance_date', 'numero_inscription'
     ]
 
     print("\n--- ÉTAPE 7 : CONSOLIDATION DES CHAMPS (IMPUTATION) ---")
