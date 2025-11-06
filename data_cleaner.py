@@ -123,10 +123,40 @@ def traiter_annee_bac(df: pd.DataFrame) -> pd.DataFrame:
         
     return df
 
-def traiter_colonnes_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Extrait l'année, le mois et le jour de la colonne 'naissance_date'."""
-    print("\n--- 📅 Traitement des Dates de Naissance (Année, Mois, Jour) ---")
+def nettoyer_bacc_numero(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Nettoie la colonne 'bacc_numero'. Ne conserve que les valeurs composées de 7 chiffres exacts,
+    sinon remplace par NA.
+    """
+    col = 'bacc_numero'
+    print(f"\n--- 🔢 Nettoyage de la Colonne '{col}' (7 chiffres requis) ---")
+    
+    if col in df.columns:
+        # 1. Copie de la colonne pour le nettoyage
+        bacc_num_clean = df[col].astype(str).str.replace(r'[^\d]', '', regex=True)
+        
+        # 2. Condition : doit avoir exactement 7 chiffres
+        condition_valide = bacc_num_clean.str.len() == 7
+        
+        # 3. Application du nettoyage
+        df[col] = np.where(condition_valide, bacc_num_clean, pd.NA)
+        
+        # 4. Finalisation du type
+        df[col] = df[col].convert_dtypes()
+        
+        val_nulles_apres = df[col].isna().sum()
+        print(f"✅ Colonne '{col}' nettoyée. Les valeurs n'ayant pas 7 chiffres exacts ont été mises à NA (Total NA: {val_nulles_apres}).")
+    else:
+        print(f"⚠️ Colonne '{col}' non trouvée. Traitement ignoré.")
+        
+    return df
 
+def traiter_naissance_date(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Traite 'naissance_date': extrait l'année des mentions textuelles ("vers 1990")
+    et décompose la date nettoyée en Année, Mois, Jour.
+    """
+    print("\n--- 📅 Traitement de la Date de Naissance ('naissance_date') ---")
     if 'naissance_date' in df.columns:
         # Gère les cas "vers 1990" en extrayant l'année
         df['annee_vers'] = df['naissance_date'].astype(str).str.extract(r'vers\s*(\d{4})', flags=re.IGNORECASE).astype('float')
@@ -154,10 +184,33 @@ def traiter_colonnes_dates(df: pd.DataFrame) -> pd.DataFrame:
         df['naissance_jour'] = df['naissance_jour'].convert_dtypes()
 
         df = df.drop(columns=['annee_vers', 'naissance_date_clean'], errors='ignore')
-        print("✅ Colonnes de date (Année, Mois, Jour) nettoyées et mises à jour.")
+        print("✅ Colonnes de date de naissance (Date, Année, Mois, Jour) nettoyées et mises à jour.")
     else:
-        print("⚠️ Colonne 'naissance_date' non trouvée pour le traitement des dates.")
+        print("⚠️ Colonne 'naissance_date' non trouvée.")
+    return df
+
+def traiter_cin_date(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Traite 'cin_date': conversion stricte en date (dayfirst=True). 
+    Toute valeur non identifiable est mise à NA.
+    """
+    print("\n--- 📅 Traitement de la Date de Délivrance CIN ('cin_date') ---")
     
+    if 'cin_date' in df.columns:
+        # Convertit la colonne en date. 'errors='coerce'' met NaT (qui devient pd.NA) si non identifiable.
+        df['cin_date'] = pd.to_datetime(
+            df['cin_date'],
+            errors='coerce', # <-- Met NaT si la date est non identifiable
+            dayfirst=True 
+        )
+        # S'assurer que le type est bien datetime nullable
+        df['cin_date'] = df['cin_date'].convert_dtypes() 
+        
+        val_nulles_apres = df['cin_date'].isna().sum()
+        print(f"✅ Colonne 'cin_date' nettoyée et convertie en date. Les valeurs non identifiables sont maintenant NA (Total NA: {val_nulles_apres}).")
+    else:
+        print("⚠️ Colonne 'cin_date' non trouvée.")
+        
     return df
 
 def standardiser_sexe(df: pd.DataFrame) -> pd.DataFrame:
@@ -527,7 +580,14 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     df = traiter_annee_universitaire(df) 
     df = traiter_annee_bac(df)
     
-    df = traiter_colonnes_dates(df)
+    # Nettoyage du numéro de bac
+    df = nettoyer_bacc_numero(df) 
+
+    # --- Nettoyage des dates séparé (selon la demande) ---
+    df = traiter_naissance_date(df)
+    df = traiter_cin_date(df)
+    # -----------------------------------------------------
+
     df = standardiser_sexe(df)
     df = traiter_formation_hybride(df)
     df = imputer_id_parcours(df)
@@ -535,7 +595,7 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     df = nettoyer_et_formater_telephone(df)
     df = nettoyer_et_formater_num_inscription(df)
     
-    # NOUVELLE ÉTAPE : Nettoyage et imputation du semestre
+    # Étape Semestre
     df = traiter_colonne_semestre(df)
 
     return df
