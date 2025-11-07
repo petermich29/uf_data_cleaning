@@ -27,20 +27,24 @@ FICHIER_DOUBLONS_INSCRIPTIONS = 'liste_doublons_inscriptions.xlsx'
 COLONNES_ATTENDUES = [
     # 1. IDENTIFIANTS UNIQUES ET BASE
     'code_etudiant',                        # Identifiant unique de l'étudiant (Hash tronqué)
-    'code_inscription',                     # Identifiant unique de l'inscription (Hash)
+    'code_inscription',                     # Identifiant unique de l'inscription (Hash semestriel)
     'numero_inscription',                   # Numéro d'inscription officiel
     'annee_universitaire',                  # Année de l'inscription
     
     # 2. INFORMATIONS INSTITUTIONNELLES (NOUVELLE POSITION)
-    'institution_id', 'institution_nom', 'institution_type', # <- Mis à jour
+    'institution_id', 'institution_nom', 'institution_type', 
     
     # 3. INFORMATIONS D'INSCRIPTION ET DE FORMATION
     'composante', 'domaine', 'mention', 'parcours', 'id_Parcours',
-    'formation', 'formation_master', 'niveau', 'semestre',
+    'formation', 'formation_master', 'niveau',
     
-    # --- Nouvelles colonnes binaires de semestre (S01 à S16) ---
-    'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 
-    'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16',
+    # --- MODIFICATION CLÉ : 'niveau' est supprimé car l'unité est désormais 'semestre' (ex: S01, S02, etc.) ---
+    # La colonne 'semestre' est conservée et contient la valeur du semestre inscrit (ex: S01)
+    'semestre', 'semestre_id',
+    
+    # --- MODIFICATION CLÉ : Suppression des colonnes binaires (elles sont fusionnées dans la colonne 'semestre') ---
+    # 'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 
+    # 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16',
     
     # 4. INFORMATIONS PERSONNELLES ET CIVILES
     'nom', 'prenoms', 'sexe', 

@@ -12,13 +12,14 @@ try:
     )
     # CORRECTION APPLIQUÉE : On revient au nom de fonction attendu 'gerer_code_etudiant_et_consolider'
     from student_code_manager import gerer_code_etudiant_et_consolider 
-    # Module pour la création du code_inscription et la suppression des doublons
-    from inscription_code_manager import gerer_code_inscription_et_supprimer_doublons
+    
+    # MODIFICATION CLÉ : Remplacement du module inscription_code_manager par inscription_semestre_code_manager
+    from inscription_semestre_code_manager import gerer_code_inscription_par_semestre
     
     print("✅ Configuration et tous les gestionnaires de données importés.")
 except ImportError as e:
     print(f"❌ Erreur d'importation : {e}")
-    print("Veuillez vérifier que 'config.py', 'data_cleaner.py', 'student_code_manager.py' et 'inscription_code_manager.py' sont présents et accessibles.")
+    print("Veuillez vérifier que 'config.py', 'data_cleaner.py', 'student_code_manager.py' et 'inscription_semestre_code_manager.py' sont présents et accessibles.")
     exit()
 
 # --- Fonction Principale d'Exécution ---
@@ -55,16 +56,14 @@ def main():
     
     # 3. Gestion des Codes Étudiants et Consolidation
     print("\n\n--- ÉTAPE 3/4 : CRÉATION DU CODE ÉTUDIANT ET CONSOLIDATION (student_code_manager) ---")
-    # Mise à jour : L'algorithme de hachage est désormais géré par défaut dans student_code_manager.py 
-    # car 'config.HASH_ALGORITHM' a été retiré de config.py.
     df_intermediaire = gerer_code_etudiant_et_consolider(df_nettoye.copy()) 
     
-    # Le nombre de lignes n'a pas changé à cette étape, seules les colonnes code_etudiant et les champs ont été consolidés.
     print(f"\n✅ Total des lignes après gestion des codes étudiants : {len(df_intermediaire)}") 
     
-    # 4. Gestion des Codes d'Inscription et Suppression des Doublons
-    print("\n\n--- ÉTAPE 4/4 : CRÉATION DU CODE INSCRIPTION ET SUPPRESSION DES DOUBLONS (inscription_code_manager) ---")
-    df_final = gerer_code_inscription_et_supprimer_doublons(df_intermediaire.copy()) 
+    # 4. Gestion des Codes d'Inscription par Semestre et Suppression des Doublons
+    print("\n\n--- ÉTAPE 4/4 : CRÉATION DU CODE INSCRIPTION PAR SEMESTRE ET SUPPRESSION DES DOUBLONS ---")
+    # MODIFICATION CLÉ : Appel à la nouvelle fonction semestrielle
+    df_final = gerer_code_inscription_par_semestre(df_intermediaire.copy()) 
 
     # 5. Finalisation et Exportation
     
