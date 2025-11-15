@@ -290,7 +290,7 @@ def ajouter_colonnes_institutionnelles(df: pd.DataFrame) -> pd.DataFrame:
     print("\n--- 🏢 Ajout des Colonnes Institutionnelles (Université de Fianarantsoa) ---")
 
     # Définition des valeurs constantes
-    INSTITUTION_ID = 'UNIV_FIANARA'
+    INSTITUTION_ID = 'UNIV-FIANARA'
     INSTITUTION_NOM = 'Université de Fianarantsoa'
     INSTITUTION_TYPE = 'PUBLIQUE'
 
@@ -307,6 +307,40 @@ def ajouter_colonnes_institutionnelles(df: pd.DataFrame) -> pd.DataFrame:
     print(f"✅ Colonnes institutionnelles créées : ID={INSTITUTION_ID}, Nom={INSTITUTION_NOM}, Type={INSTITUTION_TYPE}.")
     return df
 
+def prefixer_composante(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Préfixe la colonne 'composante' par 'institution_id' suivi d'un underscore,
+    uniquement si la valeur de 'composante' n'est pas nulle.
+    """
+    col = 'composante'
+    print(f"\n--- 🔗 Préfixage de '{col}' par 'institution_id' ---")
+
+    if col in df.columns and 'institution_id' in df.columns:
+        # Assurer que 'composante' est un type de chaîne pour le nettoyage
+        df[col] = df[col].astype(str).str.upper().str.strip()
+
+        # Créer le préfixe
+        # On utilise iloc[0] car institution_id est constant sur toutes les lignes
+        prefixe = df['institution_id'].iloc[0] + '_'
+        
+        # Identifier les valeurs non nulles dans 'composante' (après nettoyage)
+        condition_non_na = df[col].notna() & (df[col] != 'NAN') & (df[col] != '')
+
+        # Appliquer le préfixe
+        df.loc[condition_non_na, col] = prefixe + df.loc[condition_non_na, col]
+        
+        # Mettre les valeurs qui étaient nulles/vides après nettoyage à pd.NA
+        df.loc[~condition_non_na, col] = pd.NA
+        
+        df[col] = df[col].convert_dtypes()
+        
+        valeurs_prefixees = condition_non_na.sum()
+        print(f"✅ {col} préfixé avec succès. ({valeurs_prefixees} lignes mises à jour)")
+    else:
+        print(f"⚠️ Colonne '{col}' ou 'institution_id' manquante. Traitement ignoré.")
+        
+    return df
+
 def imputer_id_parcours(df: pd.DataFrame) -> pd.DataFrame:
     """Impute les valeurs manquantes de 'id_Parcours' par concaténation: composante_mention_parcours."""
     print("\n--- 🧩 Imputation de 'id_Parcours' ---")
@@ -316,6 +350,7 @@ def imputer_id_parcours(df: pd.DataFrame) -> pd.DataFrame:
         print("⚠️ Une ou plusieurs colonnes requises sont manquantes. Traitement ignoré.")
         return df
 
+    # NOTE: La colonne 'composante' doit être déjà préfixée à cette étape.
     condition_manquant = df['id_Parcours'].isna() 
 
     sources = df.loc[condition_manquant, ['composante', 'mention', 'parcours']].copy()
@@ -323,7 +358,7 @@ def imputer_id_parcours(df: pd.DataFrame) -> pd.DataFrame:
     # Prétraitement des sources pour la concaténation
     sources = sources.fillna('').astype(str).apply(lambda x: x.str.upper().str.strip())
     
-    # Concaténation
+    # Concaténation. Si 'composante' est déjà préfixée, l'id_Parcours imputé le sera aussi.
     nouveaux_ids = sources['composante'] + '_' + sources['mention'] + '_' + sources['parcours']
     
     # Supprime les IDs inutiles comme "__" ou "_"
@@ -336,6 +371,44 @@ def imputer_id_parcours(df: pd.DataFrame) -> pd.DataFrame:
     lignes_imputees = condition_manquant.sum()
     print(f"✅ {lignes_imputees} valeurs 'id_Parcours' imputées par concaténation.")
     
+    return df
+
+def prefixer_id_parcours_final(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Préfixe la colonne 'id_Parcours' par 'institution_id' suivi d'un underscore,
+    uniquement si la valeur de 'id_Parcours' n'est pas nulle ET n'est pas déjà préfixée
+    (ce qui est le cas pour les valeurs imputées).
+    """
+    col = 'id_Parcours'
+    print(f"\n--- 🔗 Préfixage final de '{col}' par 'institution_id' ---")
+
+    if col in df.columns and 'institution_id' in df.columns:
+        # Créer le préfixe
+        prefixe_str = df['institution_id'].iloc[0] + '_'
+        
+        # 1. Identifier les valeurs non nulles
+        df[col] = df[col].astype(str).str.replace('nan', '', regex=False).str.strip()
+        condition_non_na = df[col].notna() & (df[col] != '')
+        
+        # 2. Identifier les valeurs qui NE SONT PAS déjà préfixées
+        condition_non_prefixee = ~df.loc[condition_non_na, col].astype(str).str.startswith(prefixe_str)
+
+        # 3. Créer la condition finale d'application (non NA ET non préfixé)
+        indices_a_prefixer = df.loc[condition_non_na].index[condition_non_prefixee]
+
+        # 4. Appliquer le préfixe
+        df.loc[indices_a_prefixer, col] = prefixe_str + df.loc[indices_a_prefixer, col].astype(str)
+        
+        # Mettre les valeurs qui étaient nulles/vides après nettoyage à pd.NA
+        df.loc[df[col] == '', col] = pd.NA
+        
+        df[col] = df[col].convert_dtypes()
+
+        valeurs_prefixees = len(indices_a_prefixer)
+        print(f"✅ {col} préfixé avec succès (non double-préfixé). ({valeurs_prefixees} lignes mises à jour)")
+    else:
+        print(f"⚠️ Colonne '{col}' ou 'institution_id' manquante. Traitement ignoré.")
+        
     return df
 
 def nettoyer_et_formater_cin(df: pd.DataFrame) -> pd.DataFrame:
@@ -464,7 +537,6 @@ def nettoyer_et_formater_num_inscription(df: pd.DataFrame) -> pd.DataFrame:
             # Ajouter le '_' uniquement si la mention existe et n'est pas vide
             mention_prefixe = mention_prefixe.apply(lambda x: x + '_' if x else '')
             
-
         # --- B. Nettoyage du Numéro d'Inscription ---
         # On travaille sur une copie temporaire pour la manipulation des valeurs non nulles
         temp_ni = df[col_ni].copy()
@@ -598,6 +670,9 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     # Étape 1 : Nettoyage général des textes
     df = nettoyer_colonnes_texte(df)
     
+    # --- NOUVEAU: Préfixage de la composante (pour intégrer l'ID de l'institution) ---
+    df = prefixer_composante(df)
+    
     # Nettoyage et uniformisation des années
     df = traiter_annee_universitaire(df) 
     df = traiter_annee_bac(df)
@@ -612,7 +687,13 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
 
     df = standardiser_sexe(df)
     df = traiter_formation_hybride(df)
+    
+    # Imputation de id_Parcours (utilise la composante préfixée si nécessaire)
     df = imputer_id_parcours(df)
+    
+    # --- NOUVEAU: Préfixage final de id_Parcours (pour les valeurs qui n'ont pas été imputées) ---
+    df = prefixer_id_parcours_final(df)
+    
     df = nettoyer_et_formater_cin(df)
     df = nettoyer_et_formater_telephone(df)
     df = nettoyer_et_formater_num_inscription(df)
