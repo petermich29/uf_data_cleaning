@@ -36,7 +36,7 @@ COLONNES_ATTENDUES = [
     
     # 3. INFORMATIONS D'INSCRIPTION ET DE FORMATION
     'composante', 'domaine', 'mention', 'parcours', 'id_Parcours',
-    'formation', 'formation_master', 'niveau',
+    'formation', 'type_formation', 'formation_master', 'niveau',
     
     # --- MODIFICATION CLÉ : 'niveau' est supprimé car l'unité est désormais 'semestre' (ex: S01, S02, etc.) ---
     # La colonne 'semestre' est conservée et contient la valeur du semestre inscrit (ex: S01)
