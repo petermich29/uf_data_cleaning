@@ -11,16 +11,17 @@ import numpy as np
 
 def preparer_nom_prenom(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Applique la règle de standardisation des noms et prénoms.
+    Applique la règle de standardisation des noms et prénoms et supprime les lignes 
+    où les deux champs (nom et prenoms) sont vides.
 
-    Règle: Si 'nom' est vide/manquant et que 'prenom' est présent, 
-    copie le contenu de 'prenom' dans 'nom' en MAJUSCULES.
+    Règle de standardisation: Si 'nom' est vide/manquant et que 'prenoms' est présent, 
+    copie le contenu de 'prenoms' dans 'nom' en MAJUSCULES.
 
     Args:
-        df (pd.DataFrame): Le DataFrame contenant potentiellement les colonnes 'nom' et 'prenom'.
+        df (pd.DataFrame): Le DataFrame contenant potentiellement les colonnes 'nom' et 'prenoms'.
 
     Returns:
-        pd.DataFrame: Le DataFrame avec la colonne 'nom' mise à jour.
+        pd.DataFrame: Le DataFrame avec la colonne 'nom' mise à jour et les lignes sans nom/prénom supprimées.
     """
     # 1. Vérification de la présence des colonnes
     if 'nom' not in df.columns or 'prenoms' not in df.columns:
@@ -32,21 +33,34 @@ def preparer_nom_prenom(df: pd.DataFrame) -> pd.DataFrame:
     df['nom'] = df['nom'].fillna('').astype(str).str.strip()
     df['prenoms'] = df['prenoms'].fillna('').astype(str).str.strip()
 
-    # 3. Définir la condition de modification
-    # Condition: (Nom est une chaîne vide) ET (Prénom n'est pas une chaîne vide)
+    # --- ÉTAPE 1: Standardisation des noms ---
+    
+    # 3. Définir la condition de modification (Nom vide ET Prénom non vide)
     condition_a_modifier = (df['nom'].str.len() == 0) & (df['prenoms'].str.len() > 0)
     
     nombre_lignes_modifiees = condition_a_modifier.sum()
 
     if nombre_lignes_modifiees > 0:
         # 4. Appliquer la transformation
-        # Copier le prénom en MAJUSCULE dans la colonne nom pour les lignes ciblées
         df.loc[condition_a_modifier, 'nom'] = df.loc[condition_a_modifier, 'prenoms'].str.upper()
-        print(f"🛠️ Transformation de **{nombre_lignes_modifiees}** lignes effectuée pour 'nom' (copie de 'prenoms' en majuscule).")
+        print(f"🛠️ Standardisation: **{nombre_lignes_modifiees}** lignes ont eu 'nom' complété par 'prenoms' en majuscule.")
     else:
-        print("ℹ️ Aucune ligne nécessitant la transformation 'nom' <- 'prenoms' n'a été trouvée.")
+        print("ℹ️ Standardisation: Aucune ligne nécessitant la transformation 'nom' <- 'prenoms' n'a été trouvée.")
         
-    return df
+    # --- ÉTAPE 2: Suppression des lignes totalement vides ---
+    
+    # 5. Définir la condition de suppression (Nom vide APRÈS standardisation ET Prénom vide)
+    condition_a_supprimer = (df['nom'].str.len() == 0) & (df['prenoms'].str.len() == 0)
+    
+    nombre_lignes_supprimees = condition_a_supprimer.sum()
+    
+    if nombre_lignes_supprimees > 0:
+        df_nettoye = df[~condition_a_supprimer].copy() # Conserver les lignes qui NE SONT PAS à supprimer
+        print(f"🗑️ Suppression: **{nombre_lignes_supprimees}** lignes ont été supprimées car 'nom' et 'prenoms' étaient tous deux vides.")
+        return df_nettoye
+    else:
+        print("ℹ️ Suppression: Aucune ligne n'a été supprimée (toutes les lignes ont au moins un nom ou un prénom).")
+        return df
 
 def renommer_colonnes_df(df: pd.DataFrame, regles_renommage: Dict[str, str]) -> pd.DataFrame:
     """
