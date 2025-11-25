@@ -99,10 +99,3 @@ def renommer_colonnes_df(df: pd.DataFrame, regles_renommage: Dict[str, str]) -> 
     print(f"✅ {len(regles_filtrees)} colonnes renommées avec succès.")
     
     return df_renomme
-
-# Exemple d'utilisation (non exécuté si le module est importé)
-if __name__ == "__main__":
-
-    df_resultat = renommer_colonnes_df(df_test.copy(), config.COLONNES_RENOMMAGE)
-    
-    print("\nDataFrame après renommage:\n", df_resultat)
