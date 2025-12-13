@@ -95,7 +95,7 @@ def renommer_colonnes_df(df: pd.DataFrame, regles_renommage: Dict[str, str]) -> 
     df_renomme = df.rename(columns=regles_filtrees)
     
     # Optionnel: Afficher un résumé des renommages
-    # print(f"Colonnes renommées : {list(regles_filtrees.keys())} -> {list(regles_filtrees.values())}")
+    print(f"Colonnes renommées : {list(regles_filtrees.keys())} -> {list(regles_filtrees.values())}")
     print(f"✅ {len(regles_filtrees)} colonnes renommées avec succès.")
     
     return df_renomme
